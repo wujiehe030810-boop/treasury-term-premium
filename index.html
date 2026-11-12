@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Treasury Duration &amp; Term Premium</title>
+<meta name="description" content="10-year Treasury modified duration and the 10-year term premium over history, with a window study linking term-premium moves to US mortgage rates.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css">
+<style>
+:root{
+  --bg:#f7f7f5; --card:#ffffff; --ink:#1b1f24; --muted:#5d6670; --line:#e3e4e1; --grid:#ececea;
+  --dur:#2f5d9e; --tp:#c4572b; --mort:#2c8a6a; --yld:#8a8f98; --band:rgba(196,87,43,.10);
+  --accent:#2f5d9e;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121417; --card:#1a1d21; --ink:#e7e9ec; --muted:#9aa3ad; --line:#2a2f35; --grid:#24282d;
+    --dur:#7fa6e0; --tp:#ec8a5f; --mort:#5cc59f; --yld:#8d939c; --band:rgba(236,138,95,.14);
+    --accent:#7fa6e0;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121417; --card:#1a1d21; --ink:#e7e9ec; --muted:#9aa3ad; --line:#2a2f35; --grid:#24282d;
+  --dur:#7fa6e0; --tp:#ec8a5f; --mort:#5cc59f; --yld:#8d939c; --band:rgba(236,138,95,.14);
+  --accent:#7fa6e0;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 Inter,system-ui,-apple-system,Segoe UI,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 16px 64px}
+header h1{font-size:28px;line-height:1.2;margin:0 0 8px;font-weight:700;letter-spacing:-.01em}
+header p{margin:0;color:var(--muted);max-width:760px}
+.meta{font-size:13px;color:var(--muted);margin-top:10px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:28px 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.kpi .v{font:500 24px/1.3 "JetBrains Mono",ui-monospace,monospace;margin-top:4px}
+.kpi .s{font-size:12px;color:var(--muted)}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 20px 16px;margin:0 0 20px}
+section h2{font-size:18px;margin:0 0 4px;font-weight:600}
+section .sub{color:var(--muted);font-size:14px;margin:0 0 14px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted);margin-bottom:6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.chart{width:100%;min-height:340px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:14px}
+.controls label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.controls input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.btn{font:inherit;font-size:13px;padding:7px 12px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+th{font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+td.num{font-family:"JetBrains Mono",ui-monospace,monospace}
+.tablewrap{overflow-x:auto}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.claim{border-left:3px solid var(--tp);padding:4px 0 4px 16px;font-size:16px}
+.claim b{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500}
+.note{font-size:13px;color:var(--muted)}
+code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px}
+a{color:var(--accent)}
+footer{font-size:12px;color:var(--muted);margin-top:28px}
+.u-legend{display:none}
+@media (max-width:760px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid2{grid-template-columns:1fr}
+  header h1{font-size:23px}
+  section{padding:16px 12px}
+  .chart{min-height:0}
+  th,td{padding:7px 6px;font-size:13px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>10-Year Treasury: Duration &amp; Term Premium</h1>
+    <p>Modified duration of the 10-year Treasury note and the 10-year term premium since 1990, plus a window study that ties a term-premium shock to the US mortgage market.</p>
+    <div class="meta" id="meta">Loading data…</div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <h2>Duration vs. term premium, 1990 – today</h2>
+    <p class="sub">Left axis: modified duration (years) of a par 10-year note at the current 10-year yield. Right axis: 10-year term premium (%). Shaded band = the analysis window below.</p>
+    <div class="legend"><span><i style="background:var(--dur)"></i>Modified duration, 10Y par note (yrs)</span><span><i style="background:var(--tp)"></i>10Y term premium (%)</span></div>
+    <div class="chart" id="c1"></div>
+  </section>
+
+  <section>
+    <h2>Window study: term premium → mortgage rates</h2>
+    <p class="sub">Pick any window. Every number in the table is computed in your browser from the data file.</p>
+    <div class="controls">
+      <label>Start<input type="date" id="ws"></label>
+      <label>End<input type="date" id="we"></label>
+      <button class="btn" data-p="2013-05-02,2013-09-05">2013 taper tantrum</button>
+      <button class="btn" data-p="2023-07-31,2023-10-19">2023 term-premium surge</button>
+      <button class="btn" data-p="2024-09-16,2025-01-14">2024–25 rise</button>
+    </div>
+    <div class="grid2">
+      <div class="tablewrap"><table id="tbl"></table></div>
+      <div>
+        <div class="legend"><span><i style="background:var(--mort)"></i>30Y mortgage rate (%)</span><span><i style="background:var(--yld)"></i>10Y yield (%)</span><span><i style="background:var(--tp)"></i>Term premium (%, right)</span></div>
+        <div class="chart" id="c2" style="min-height:300px"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Finding</h2>
+    <p class="claim" id="claim">Computing…</p>
+    <p class="note" id="claimnote"></p>
+  </section>
+
+  <section>
+    <h2>Data &amp; method</h2>
+    <p class="note"><b>Term premium:</b> FRED series <code>THREEFYTP10</code>, the 10-year term premium from the Kim–Wright three-factor term-structure model (Federal Reserve Board), daily.<br>
+    <b>10-year yield:</b> FRED <code>DGS10</code>, 10-year Treasury constant-maturity yield (H.15), daily.<br>
+    <b>Mortgage rate:</b> FRED <code>MORTGAGE30US</code>, Freddie Mac Primary Mortgage Market Survey 30-year fixed rate, weekly (Thursdays).<br>
+    <b>Duration:</b> for a par 10-year note with semiannual coupons and yield <i>y</i>, modified duration is computed as <code>D = (1/y)·[1 − (1 + y/2)<sup>−20</sup>]</code>. Duration falls as yields rise, so the two lines tend to move in opposite directions.<br>
+    <b>Window math:</b> start and end values are the last observation on or before each date. The price effect is <code>−D<sub>start</sub> × ΔTP</code>, the approximate % change in a 10-year note's price from the term-premium move alone. The weekly correlation uses Thursday-to-Thursday changes in the term premium and the mortgage rate inside the window.</p>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js"></script>
+<script>
+(async function(){
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const toTs = s => Date.parse(s + "T00:00:00Z") / 1000;
+  const fmtD = t => new Date(t * 1000).toISOString().slice(0, 10);
+  const f = (v, d = 2) => v.toFixed(d);
+  const sg = (v, d = 2) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(d);
+
+  const D = await fetch("data.json").then(r => r.json());
+  const ts = D.daily.d.map(toTs), tp = D.daily.tp, y = D.daily.y;
+  const dur = y.map(v => { const r = v / 100; return (1 / r) * (1 - Math.pow(1 + r / 2, -20)); });
+  const mts = D.mortgage.d.map(toTs), mr = D.mortgage.r;
+
+  function asOf(xs, t){
+    let lo = 0, hi = xs.length - 1, ans = -1;
+    while (lo <= hi){ const m = (lo + hi) >> 1; if (xs[m] <= t){ ans = m; lo = m + 1; } else hi = m - 1; }
+    return ans;
+  }
+  function corr(a, b){
+    const n = a.length; if (n < 3) return NaN;
+    const ma = a.reduce((s, v) => s + v, 0) / n, mb = b.reduce((s, v) => s + v, 0) / n;
+    let sab = 0, saa = 0, sbb = 0;
+    for (let i = 0; i < n; i++){ const da = a[i] - ma, db = b[i] - mb; sab += da * db; saa += da * da; sbb += db * db; }
+    return sab / Math.sqrt(saa * sbb);
+  }
+  function stats(s, e){
+    const i0 = asOf(ts, s), i1 = asOf(ts, e), k0 = asOf(mts, s), k1 = asOf(mts, e);
+    const yAtM = k => y[asOf(ts, mts[k])];
+    const o = {
+      d0: ts[i0], d1: ts[i1], md0: mts[k0], md1: mts[k1],
+      tp0: tp[i0], tp1: tp[i1], y0: y[i0], y1: y[i1], D0: dur[i0], D1: dur[i1],
+      m0: mr[k0], m1: mr[k1], sp0: mr[k0] - yAtM(k0), sp1: mr[k1] - yAtM(k1)
+    };
+    o.dtp = o.tp1 - o.tp0; o.dy = o.y1 - o.y0; o.dD = o.D1 - o.D0; o.dm = o.m1 - o.m0; o.dsp = o.sp1 - o.sp0;
+    o.ratio = o.dm / o.dtp; o.share = o.dtp / o.dy; o.px = -o.D0 * o.dtp;
+    const a = [], b = [];
+    for (let k = k0 + 1; k <= k1; k++){
+      a.push(tp[asOf(ts, mts[k])] - tp[asOf(ts, mts[k - 1])]);
+      b.push(mr[k] - mr[k - 1]);
+    }
+    o.rho = corr(a, b); o.n = a.length;
+    return o;
+  }
+
+  const L = ts.length - 1, LM = mts.length - 1;
+  document.getElementById("meta").textContent = `Daily data through ${D.updated} · weekly mortgage data through ${D.mortgage.d[LM]}`;
+  document.getElementById("kpis").innerHTML = [
+    ["10Y yield", f(y[L]) + "%", D.daily.d[L]],
+    ["Modified duration", f(dur[L]) + " yrs", "par 10Y note"],
+    ["10Y term premium", f(tp[L]) + "%", D.daily.d[L]],
+    ["30Y mortgage rate", f(mr[LM]) + "%", D.mortgage.d[LM]],
+  ].map(([l, v, s]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
+
+  const DEF = ["2013-05-02", "2013-09-05"];
+  let win = DEF.map(toTs);
+  const wsI = document.getElementById("ws"), weI = document.getElementById("we");
+  wsI.value = DEF[0]; weI.value = DEF[1];
+  wsI.min = weI.min = D.daily.d[0]; wsI.max = weI.max = D.daily.d[L];
+
+  const band = () => ({ hooks: { drawClear: u => {
+    const x0 = u.valToPos(win[0], "x", true), x1 = u.valToPos(win[1], "x", true);
+    const c = u.ctx; c.save(); c.fillStyle = css("--band");
+    c.fillRect(Math.max(x0, u.bbox.left), u.bbox.top, Math.max(2, Math.min(x1, u.bbox.left + u.bbox.width) - Math.max(x0, u.bbox.left)), u.bbox.height);
+    c.restore();
+  }}});
+  const axis = (scale, side, unit, color) => ({
+    scale, side, stroke: css("--muted"), size: 52,
+    grid: { show: side === 3, stroke: css("--grid"), width: 1 },
+    ticks: { stroke: css("--grid") },
+    values: (u, vs) => vs.map(v => v.toFixed(1) + (unit === "%" ? "%" : "")),
+    labelFont: "12px Inter", font: "11px Inter", label: undefined, labelSize: 0, color
+  });
+  const xAxis = () => ({ stroke: css("--muted"), grid: { stroke: css("--grid"), width: 1 }, ticks: { stroke: css("--grid") }, font: "11px Inter" });
+  const width = el => el.clientWidth;
+
+  let u1, u2;
+  function draw1(){
+    const el = document.getElementById("c1"); el.innerHTML = "";
+    u1 = new uPlot({
+      width: width(el), height: el.clientWidth < 600 ? 280 : 360,
+      cursor: { drag: { x: true, y: false } },
+      scales: { x: { time: true }, dur: {}, tp: {} },
+      series: [
+        { value: (u, v) => v == null ? "" : fmtD(v) },
+        { label: "Duration", scale: "dur", stroke: css("--dur"), width: 1.5, value: (u, v) => v == null ? "" : f(v) },
+        { label: "Term premium", scale: "tp", stroke: css("--tp"), width: 1.5, value: (u, v) => v == null ? "" : f(v) + "%" },
+      ],
+      axes: [ xAxis(), axis("dur", 3, "y"), axis("tp", 1, "%") ],
+      plugins: [ band() ],
+    }, [ts, dur, tp], el);
+  }
+  function draw2(){
+    const el = document.getElementById("c2"); el.innerHTML = "";
+    const pad = 120 * 86400, a = win[0] - pad, b = win[1] + pad;
+    const k0 = Math.max(0, asOf(mts, a)), k1 = asOf(mts, b);
+    const xs = mts.slice(k0, k1 + 1);
+    const m = mr.slice(k0, k1 + 1);
+    const yy = xs.map(t => y[asOf(ts, t)]), tt = xs.map(t => tp[asOf(ts, t)]);
+    u2 = new uPlot({
+      width: width(el), height: 300,
+      scales: { x: { time: true }, pct: {}, tp: {} },
+      series: [
+        { value: (u, v) => v == null ? "" : fmtD(v) },
+        { label: "Mortgage", scale: "pct", stroke: css("--mort"), width: 2, value: (u, v) => v == null ? "" : f(v) + "%" },
+        { label: "10Y", scale: "pct", stroke: css("--yld"), width: 1.5, dash: [4, 3], value: (u, v) => v == null ? "" : f(v) + "%" },
+        { label: "TP", scale: "tp", stroke: css("--tp"), width: 2, value: (u, v) => v == null ? "" : f(v) + "%" },
+      ],
+      axes: [ xAxis(), axis("pct", 3, "%"), axis("tp", 1, "%") ],
+      plugins: [ band() ],
+    }, [xs, m, yy, tt], el);
+  }
+  function table(){
+    const o = stats(win[0], win[1]);
+    const row = (l, a, b, d, u) => `<tr><td>${l}</td><td class="num">${a}</td><td class="num">${b}</td><td class="num">${d}</td></tr>`;
+    document.getElementById("tbl").innerHTML =
+      `<tr><th>Series</th><th>${fmtD(o.d0)}</th><th>${fmtD(o.d1)}</th><th>Change</th></tr>` +
+      row("10Y term premium (%)", f(o.tp0), f(o.tp1), sg(o.dtp)) +
+      row("10Y yield (%)", f(o.y0), f(o.y1), sg(o.dy)) +
+      row("Modified duration (yrs)", f(o.D0), f(o.D1), sg(o.dD)) +
+      row(`30Y mortgage rate (%) <span class="note">${fmtD(o.md0)} → ${fmtD(o.md1)}</span>`, f(o.m0), f(o.m1), sg(o.dm)) +
+      row("Mortgage − 10Y spread (pp)", f(o.sp0), f(o.sp1), sg(o.dsp)) +
+      `<tr><td>Share of 10Y yield change from term premium</td><td></td><td></td><td class="num">${f(o.share * 100, 0)}%</td></tr>` +
+      `<tr><td>Mortgage-rate pass-through (ΔMortgage / ΔTP)</td><td></td><td></td><td class="num">${f(o.ratio)}×</td></tr>` +
+      `<tr><td>10Y note price effect of ΔTP (−D × ΔTP)</td><td></td><td></td><td class="num">${sg(o.px, 1)}%</td></tr>` +
+      `<tr><td>Weekly corr(ΔTP, ΔMortgage), n = ${o.n}</td><td></td><td></td><td class="num">${isNaN(o.rho) ? "n/a" : f(o.rho)}</td></tr>`;
+    document.querySelectorAll(".btn[data-p]").forEach(bt => bt.classList.toggle("on", bt.dataset.p === `${wsI.value},${weI.value}`));
+  }
+  function claim(){
+    const o = stats(...DEF.map(toTs));
+    document.getElementById("claim").innerHTML =
+      `During the 2013 “taper tantrum” window (<b>${fmtD(o.d0)}</b> to <b>${fmtD(o.d1)}</b>), the 10-year term premium rose ` +
+      `<b>${sg(o.dtp)} pp</b> (from ${f(o.tp0)}% to ${f(o.tp1)}%), about <b>${f(o.share * 100, 0)}%</b> of the ${sg(o.dy)} pp rise in the 10-year yield. ` +
+      `Over the same window the <strong>US residential mortgage market</strong> repriced: the Freddie Mac 30-year fixed rate rose <b>${sg(o.dm)} pp</b> ` +
+      `(${f(o.m0)}% → ${f(o.m1)}%), a pass-through of <b>${f(o.ratio)}×</b> the term-premium change, and weekly term-premium and mortgage-rate changes had a correlation of <b>${f(o.rho)}</b>. ` +
+      `Duration did the opposite: as yields jumped, the par 10-year note's modified duration fell from <b>${f(o.D0)}</b> to <b>${f(o.D1)}</b> years, ` +
+      `and the term-premium move alone implies a price loss of about <b>${f(Math.abs(o.px), 1)}%</b> on a 10-year note.`;
+    document.getElementById("claimnote").textContent =
+      "Reading: when the Fed signaled it would taper asset purchases in May–June 2013, investors demanded more compensation for holding duration risk. Since 30-year mortgages are priced off the 10-year Treasury, borrowing costs for homebuyers rose by more than the term premium itself. The mortgage–Treasury spread barely moved, so almost all of the jump in mortgage rates came through the Treasury curve, where the term premium was the largest single driver.";
+  }
+
+  function setWin(a, b){
+    let s = toTs(a), e = toTs(b);
+    if (!(s < e)) return;
+    win = [s, e]; table(); draw1(); draw2();
+  }
+  wsI.addEventListener("change", () => setWin(wsI.value, weI.value));
+  weI.addEventListener("change", () => setWin(wsI.value, weI.value));
+  document.querySelectorAll(".btn[data-p]").forEach(bt => bt.addEventListener("click", () => {
+    const [a, b] = bt.dataset.p.split(","); wsI.value = a; weI.value = b; setWin(a, b);
+  }));
+
+  table(); claim(); draw1(); draw2();
+  let rt; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { draw1(); draw2(); }, 120); }).observe(document.querySelector(".wrap"));
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { draw1(); draw2(); });
+
+  document.getElementById("foot").textContent = `Sources: Federal Reserve Bank of St. Louis (FRED) — THREEFYTP10, DGS10, MORTGAGE30US. Data file built ${D.updated}.`;
+})();
+</script>
+</body>
+</html>
